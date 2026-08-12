@@ -1,0 +1,15 @@
+data/
+*.npy
+*.npz
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+__pycache__/
+*.pyc
+
+.DS_Store
+
+.venv/
+venv/
