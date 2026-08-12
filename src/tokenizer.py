@@ -130,18 +130,19 @@ def train_bpe(input_path, vocab_size, special_tokens, max_chars=300_000_000,
 
 class BPETokenizer:
 
-    def __init__(self, vocab, merges, special_tokens=(END_OF_TEXT,)):
+    def __init__(self, vocab, merges, special_tokens=None):
         self.vocab = vocab
         self.merges = merges
-        self.special_tokens = list(special_tokens)
+        self.special_tokens = list(special_tokens) if special_tokens else []
         self.token_to_id = {token: i for i, token in vocab.items()}
         self.merge_ranks = {pair: rank for rank, pair in enumerate(merges)}
         self._cache = {}
         self._special_re = re.compile(
-            "(" + "|".join(re.escape(s) for s in self.special_tokens) + ")")
+            "(" + "|".join(re.escape(s) for s in self.special_tokens) + ")"
+        ) if self.special_tokens else None
 
     @classmethod
-    def from_files(cls, vocab_path, merges_path, special_tokens=(END_OF_TEXT,)):
+    def from_files(cls, vocab_path, merges_path, special_tokens=None):
         with open(vocab_path, encoding="utf-8") as f:
             vocab = {int(i): token.encode("latin-1") for i, token in json.load(f).items()}
         with open(merges_path, encoding="utf-8") as f:
@@ -178,7 +179,8 @@ class BPETokenizer:
 
     def encode(self, text):
         ids = []
-        for piece in self._special_re.split(text):
+        pieces = self._special_re.split(text) if self._special_re else [text]
+        for piece in pieces:
             if piece in self.special_tokens:
                 ids.append(self.token_to_id[piece.encode("utf-8")])
             else:
@@ -225,3 +227,24 @@ def vocab_size_study(input_path, vocab_sizes, special_tokens=(END_OF_TEXT,)):
               f"{n_bytes / n_tokens:>12.3f} {n_chars / n_tokens:>12.3f}")
     return results
 
+def encode_file(input_path, tokenizer, output_path, block_chars=1 << 22):
+
+    def blocks(handle):
+        while True:
+            data = handle.read(block_chars)
+            if not data:
+                return
+            yield data
+
+    parts, buffer = [], []
+    with open(input_path, encoding="utf-8", errors="replace") as f:
+        for token_id in tokenizer.encode_iterable(blocks(f)):
+            buffer.append(token_id)
+            if len(buffer) >= 1_000_000:
+                parts.append(np.array(buffer, dtype=np.uint16))
+                buffer = []
+    parts.append(np.array(buffer, dtype=np.uint16))
+
+    ids = np.concatenate(parts)
+    np.save(output_path, ids)
+    return len(ids)
