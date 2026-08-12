@@ -127,3 +127,84 @@ def train_bpe(input_path, vocab_size, special_tokens, max_chars=300_000_000,
                   f"[{time.time() - start:.1f}s]")
 
     return vocab, merges
+
+class BPETokenizer:
+
+    def __init__(self, vocab, merges, special_tokens=(END_OF_TEXT,)):
+        self.vocab = vocab
+        self.merges = merges
+        self.special_tokens = list(special_tokens)
+        self.token_to_id = {token: i for i, token in vocab.items()}
+        self.merge_ranks = {pair: rank for rank, pair in enumerate(merges)}
+        self._cache = {}
+        self._special_re = re.compile(
+            "(" + "|".join(re.escape(s) for s in self.special_tokens) + ")")
+
+    @classmethod
+    def from_files(cls, vocab_path, merges_path, special_tokens=(END_OF_TEXT,)):
+        with open(vocab_path, encoding="utf-8") as f:
+            vocab = {int(i): token.encode("latin-1") for i, token in json.load(f).items()}
+        with open(merges_path, encoding="utf-8") as f:
+            merges = [(left.encode("latin-1"), right.encode("latin-1"))
+                      for left, right in json.load(f)]
+        return cls(vocab, merges, special_tokens)
+
+    def save(self, vocab_path, merges_path):
+        with open(vocab_path, "w", encoding="utf-8") as f:
+            json.dump({str(i): token.decode("latin-1") for i, token in self.vocab.items()},
+                      f, ensure_ascii=False)
+        with open(merges_path, "w", encoding="utf-8") as f:
+            json.dump([[left.decode("latin-1"), right.decode("latin-1")]
+                       for left, right in self.merges], f, ensure_ascii=False)
+
+    def _apply_merges(self, symbols):
+        symbols = list(symbols)
+        while len(symbols) > 1:
+            best_rank, best_index = None, None
+            for i, pair in enumerate(zip(symbols, symbols[1:])):
+                rank = self.merge_ranks.get(pair)
+                if rank is not None and (best_rank is None or rank < best_rank):
+                    best_rank, best_index = rank, i
+            if best_index is None:
+                break
+            symbols[best_index:best_index + 2] = [symbols[best_index] + symbols[best_index + 1]]
+        return symbols
+
+    def _encode_pretoken(self, pretoken):
+        if pretoken not in self._cache:
+            symbols = self._apply_merges([bytes([b]) for b in pretoken])
+            self._cache[pretoken] = [self.token_to_id[s] for s in symbols]
+        return self._cache[pretoken]
+
+    def encode(self, text):
+        ids = []
+        for piece in self._special_re.split(text):
+            if piece in self.special_tokens:
+                ids.append(self.token_to_id[piece.encode("utf-8")])
+            else:
+                for pretoken in pretokenize(piece):
+                    ids.extend(self._encode_pretoken(pretoken))
+        return ids
+
+    def encode_iterable(self, iterable):
+
+        buffer = ""
+        for chunk in iterable:
+            buffer += chunk
+            if len(buffer) < (1 << 20):
+                continue
+            cut = buffer.rfind("\n")
+            while cut > 0 and buffer[cut - 1].isspace():
+                cut = buffer.rfind("\n", 0, cut)
+            if cut > 0:
+                yield from self.encode(buffer[:cut])
+                buffer = buffer[cut:]
+        if buffer:
+            yield from self.encode(buffer)
+
+    def decode(self, ids):
+        tokens = [self.vocab[i] for i in ids]
+        raw = b"".join(tokens)
+        return raw.decode("utf-8", errors="replace")
+
+    
