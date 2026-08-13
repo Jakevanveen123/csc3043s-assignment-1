@@ -9,7 +9,6 @@ from src.tokenizer import END_OF_TEXT, BPETokenizer, train_bpe
 TRAIN = "/content/drive/MyDrive/CSC3043S/train.txt"
 VALID_FULL = "data/TinyStoriesV2-GPT4-valid.txt"
 VALID = "/content/drive/MyDrive/CSC3043S/valid.txt"
-TEST = "data/test.txt"
  
 VOCAB_SIZES = [4000, 1000]
 
