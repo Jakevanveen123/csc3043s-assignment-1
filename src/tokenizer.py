@@ -50,7 +50,7 @@ def train_bpe(input_path, vocab_size, special_tokens, max_chars=300_000_000,
     with open(input_path, encoding="utf-8") as f:
         text = f.read(max_chars)
 
-    if len(text) == max_chars:                    # ← the new bit
+    if len(text) == max_chars:                    
         cut = text.rfind(special_tokens[0])
         if cut != -1:
             text = text[:cut]

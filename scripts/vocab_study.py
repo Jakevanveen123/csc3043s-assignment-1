@@ -1,7 +1,15 @@
+from pathlib import Path
+import sys
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT_DIR))
 from src.tokenizer import BPETokenizer
 from src.tokenizer import train_bpe
 
 END_OF_TEXT = "<|endoftext|>"
+
+VALID_PATH = "data/TinyStoriesV2-GPT4-valid.txt"
+SIZES = [1000, 2000, 4000, 8000, 16000]
 
 def vocab_size_study(input_path, vocab_sizes, special_tokens=(END_OF_TEXT,)):
 
@@ -19,3 +27,7 @@ def vocab_size_study(input_path, vocab_sizes, special_tokens=(END_OF_TEXT,)):
         print(f"{vocab_size:>8,} {n_tokens:>14,} "
               f"{n_bytes / n_tokens:>12.3f} {n_chars / n_tokens:>12.3f}")
     return results
+
+if __name__ == "__main__":
+    vocab_size_study(VALID_PATH, SIZES)
+    
