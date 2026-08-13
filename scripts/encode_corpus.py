@@ -37,8 +37,12 @@ def encode_file(input_path, tokenizer, output_path, block_chars=1 << 22):
 
 def build(vocab_size):
 
-    vocab = (train_bpe(TRAIN, vocab_size, [END_OF_TEXT], verbose=True))[0]
-    merges = (train_bpe(TRAIN, vocab_size, [END_OF_TEXT], verbose=True))[1]
+    vocab, merges = train_bpe(
+        TRAIN,
+        vocab_size,
+        [END_OF_TEXT],
+        verbose=True
+    )
     tokenizer = BPETokenizer(vocab, merges, [END_OF_TEXT])
     tokenizer.save(f"data/tok{vocab_size}_vocab.json",
                    f"data/tok{vocab_size}_merges.json")
