@@ -6,9 +6,9 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
  
 from src.tokenizer import END_OF_TEXT, BPETokenizer, train_bpe
-TRAIN = "data/train.txt"
+TRAIN = "/content/drive/MyDrive/CSC3043S/data/train.txt"
 VALID_FULL = "data/TinyStoriesV2-GPT4-valid.txt"
-VALID = "data/valid.txt"
+VALID = "/content/drive/MyDrive/CSC3043S/data/valid.txt"
 TEST = "data/test.txt"
  
 VOCAB_SIZES = [4000, 1000]
