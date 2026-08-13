@@ -50,6 +50,11 @@ def train_bpe(input_path, vocab_size, special_tokens, max_chars=300_000_000,
     with open(input_path, encoding="utf-8") as f:
         text = f.read(max_chars)
 
+    if len(text) == max_chars:                    # ← the new bit
+        cut = text.rfind(special_tokens[0])
+        if cut != -1:
+            text = text[:cut]
+            
     pretoken_counts = count_pretokens(text, special_tokens)
     del text     
 
@@ -208,43 +213,3 @@ class BPETokenizer:
         tokens = [self.vocab[i] for i in ids]
         raw = b"".join(tokens)
         return raw.decode("utf-8", errors="replace")
-
-
-def vocab_size_study(input_path, vocab_sizes, special_tokens=(END_OF_TEXT,)):
-
-    with open(input_path, encoding="utf-8") as f:
-        text = f.read()
-    n_bytes = len(text.encode("utf-8"))
-    n_chars = len(text)
-
-    results = []
-    print(f"{'vocab':>8} {'tokens':>14} {'bytes/token':>12} {'chars/token':>12}")
-    for vocab_size in vocab_sizes:
-        vocab, merges = train_bpe(input_path, vocab_size, list(special_tokens))
-        n_tokens = len(BPETokenizer(vocab, merges, special_tokens).encode(text))
-        results.append((vocab_size, n_bytes / n_tokens, n_chars / n_tokens))
-        print(f"{vocab_size:>8,} {n_tokens:>14,} "
-              f"{n_bytes / n_tokens:>12.3f} {n_chars / n_tokens:>12.3f}")
-    return results
-
-def encode_file(input_path, tokenizer, output_path, block_chars=1 << 22):
-
-    def blocks(handle):
-        while True:
-            data = handle.read(block_chars)
-            if not data:
-                return
-            yield data
-
-    parts, buffer = [], []
-    with open(input_path, encoding="utf-8", errors="replace") as f:
-        for token_id in tokenizer.encode_iterable(blocks(f)):
-            buffer.append(token_id)
-            if len(buffer) >= 1_000_000:
-                parts.append(np.array(buffer, dtype=np.uint16))
-                buffer = []
-    parts.append(np.array(buffer, dtype=np.uint16))
-
-    ids = np.concatenate(parts)
-    np.save(output_path, ids)
-    return len(ids)
