@@ -46,7 +46,7 @@ def build(vocab_size):
     tokenizer.save(f"data/tok{vocab_size}_vocab.json",
                    f"data/tok{vocab_size}_merges.json")
  
-    for name, path in [("train", TRAIN), ("valid", VALID), ("test", TEST)]:
+    for name, path in [("train", TRAIN), ("valid", VALID)]:
         output = f"data/{name}_{vocab_size}.npy"
         print(f"  {output}: {encode_file(path, tokenizer, output):,} tokens")
 
